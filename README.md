@@ -5,6 +5,10 @@ This repo contains the official implementation for the NeurIPS 2019 paper
 
 by __Yang Song__ and __Stefano Ermon__. Stanford AI Lab.
 
+
+**Contribution**: For the purpose of a project of the course Geometric Data Analysis at Master MVA, I implemented a few experiments with the proposed method in the file `geom_data_analysis_project.ipynb`.
+
+
 **Note**: **The method has been greatly stabilized by the subsequent work
 [Improved Techniques for Training Score-Based Generative Models](https://arxiv.org/abs/2006.09011) ([code](https://github.com/ermongroup/ncsnv2)) and more recently extended by [Score-Based Generative Modeling through Stochastic Differential Equations](https://arxiv.org/abs/2011.13456) ([code](https://github.com/yang-song/score_sde)). This codebase is therefore not recommended for new projects anymore.**
 
