@@ -12,34 +12,75 @@ from runners import *
 
 
 def parse_args_and_config():
-    parser = argparse.ArgumentParser(description=globals()['__doc__'])
+    parser = argparse.ArgumentParser(description=globals()["__doc__"])
 
-    parser.add_argument('--runner', type=str, default='AnnealRunner', help='The runner to execute')
-    parser.add_argument('--config', type=str, default='anneal.yml',  help='Path to the config file')
-    parser.add_argument('--seed', type=int, default=1234, help='Random seed')
-    parser.add_argument('--run', type=str, default='run', help='Path for saving running related data.')
-    parser.add_argument('--doc', type=str, default='0', help='A string for documentation purpose')
-    parser.add_argument('--comment', type=str, default='', help='A string for experiment comment')
-    parser.add_argument('--verbose', type=str, default='info', help='Verbose level: info | debug | warning | critical')
-    parser.add_argument('--test', action='store_true', help='Whether to test the model')
-    parser.add_argument('--resume_training', action='store_true', help='Whether to resume training')
-    parser.add_argument('-o', '--image_folder', type=str, default='images', help="The directory of image outputs")
+    parser.add_argument(
+        "--runner", type=str, default="AnnealRunner", help="The runner to execute"
+    )
+    parser.add_argument(
+        "--config", type=str, default="anneal.yml", help="Path to the config file"
+    )
+    parser.add_argument("--seed", type=int, default=1234, help="Random seed")
+    parser.add_argument(
+        "--run", type=str, default="run", help="Path for saving running related data."
+    )
+    parser.add_argument(
+        "--doc", type=str, default="0", help="A string for documentation purpose"
+    )
+    parser.add_argument(
+        "--comment", type=str, default="", help="A string for experiment comment"
+    )
+    parser.add_argument(
+        "--verbose",
+        type=str,
+        default="info",
+        help="Verbose level: info | debug | warning | critical",
+    )
+    parser.add_argument("--test", action="store_true", help="Whether to test the model")
+    parser.add_argument(
+        "--resume_training", action="store_true", help="Whether to resume training"
+    )
+    parser.add_argument(
+        "-o",
+        "--image_folder",
+        type=str,
+        default="images",
+        help="The directory of image outputs",
+    )
 
     args = parser.parse_args()
     run_id = str(os.getpid())
-    run_time = time.strftime('%Y-%b-%d-%H-%M-%S')
+    run_time = time.strftime("%Y-%b-%d-%H-%M-%S")
     # args.doc = '_'.join([args.doc, run_id, run_time])
-    args.log = os.path.join(args.run, 'logs', args.doc)
+    args.log = os.path.join(args.run, "logs", args.doc)
 
     # parse config file
     if not args.test:
-        with open(os.path.join('configs', args.config), 'r') as f:
-            config = yaml.load(f)
+        with open(os.path.join("configs", args.config), "r") as f:
+            config = yaml.load(f, Loader=yaml.SafeLoader)
         new_config = dict2namespace(config)
     else:
-        with open(os.path.join(args.log, 'config.yml'), 'r') as f:
-            config = yaml.load(f)
-        new_config = config
+        # Load config for testing - handle both old format (with Python object tags)
+        # and new format (plain YAML)
+        config_path = os.path.join(args.log, "config.yml")
+        with open(config_path, "r") as f:
+            config_content = f.read()
+
+        # Try SafeLoader first (for new format)
+        try:
+            config = yaml.load(config_content, Loader=yaml.SafeLoader)
+            new_config = dict2namespace(config)
+        except yaml.constructor.ConstructorError:
+            # If SafeLoader fails, try UnsafeLoader (for old format with Python object tags)
+            # This handles the old config.yml files that were saved with Namespace objects
+            # Note: UnsafeLoader is used here because these are local config files we control
+            config = yaml.load(config_content, Loader=yaml.UnsafeLoader)
+            # If config is already a Namespace, use it directly (it's already in the right format)
+            # Otherwise convert dict to namespace
+            if isinstance(config, argparse.Namespace):
+                new_config = config
+            else:
+                new_config = dict2namespace(config)
 
     if not args.test:
         if not args.resume_training:
@@ -47,17 +88,19 @@ def parse_args_and_config():
                 shutil.rmtree(args.log)
             os.makedirs(args.log)
 
-        with open(os.path.join(args.log, 'config.yml'), 'w') as f:
-            yaml.dump(new_config, f, default_flow_style=False)
+        with open(os.path.join(args.log, "config.yml"), "w") as f:
+            yaml.dump(namespace2dict(new_config), f, default_flow_style=False)
 
         # setup logger
         level = getattr(logging, args.verbose.upper(), None)
         if not isinstance(level, int):
-            raise ValueError('level {} not supported'.format(args.verbose))
+            raise ValueError("level {} not supported".format(args.verbose))
 
         handler1 = logging.StreamHandler()
-        handler2 = logging.FileHandler(os.path.join(args.log, 'stdout.txt'))
-        formatter = logging.Formatter('%(levelname)s - %(filename)s - %(asctime)s - %(message)s')
+        handler2 = logging.FileHandler(os.path.join(args.log, "stdout.txt"))
+        formatter = logging.Formatter(
+            "%(levelname)s - %(filename)s - %(asctime)s - %(message)s"
+        )
         handler1.setFormatter(formatter)
         handler2.setFormatter(formatter)
         logger = logging.getLogger()
@@ -68,17 +111,19 @@ def parse_args_and_config():
     else:
         level = getattr(logging, args.verbose.upper(), None)
         if not isinstance(level, int):
-            raise ValueError('level {} not supported'.format(args.verbose))
+            raise ValueError("level {} not supported".format(args.verbose))
 
         handler1 = logging.StreamHandler()
-        formatter = logging.Formatter('%(levelname)s - %(filename)s - %(asctime)s - %(message)s')
+        formatter = logging.Formatter(
+            "%(levelname)s - %(filename)s - %(asctime)s - %(message)s"
+        )
         handler1.setFormatter(formatter)
         logger = logging.getLogger()
         logger.addHandler(handler1)
         logger.setLevel(level)
 
     # add device
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     logging.info("Using device: {}".format(device))
     new_config.device = device
 
@@ -104,6 +149,15 @@ def dict2namespace(config):
     return namespace
 
 
+def namespace2dict(config):
+    """Convert argparse.Namespace to dict recursively."""
+    if isinstance(config, argparse.Namespace):
+        config = vars(config)
+    if isinstance(config, dict):
+        return {key: namespace2dict(value) for key, value in config.items()}
+    return config
+
+
 def main():
     args, config = parse_args_and_config()
     logging.info("Writing log file to {}".format(args.log))
@@ -126,5 +180,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

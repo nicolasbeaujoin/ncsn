@@ -12,3 +12,7 @@ graph_data
 preprocessing/*.csv
 preprocessing/*.txt
 preprocessing/*.data
+report_3.pdf
+samples/*
+test.ipynb
+mnist_img/*

@@ -7,13 +7,14 @@ from models.gmm import GMM, Gaussian, GMMDist, Square, GMMDistAnneal
 import matplotlib.pyplot as plt
 import torch
 import seaborn as sns
+
 sns.set()
-sns.set_style('white')
+sns.set_style("white")
 
-__all__ = ['ToyRunner']
+__all__ = ["ToyRunner"]
 
 
-class Ring():
+class Ring:
     def __init__(self, radius, width):
         self.radius = radius
         self.width = width
@@ -31,7 +32,7 @@ class Ring():
         return self.r_dist.log_prob(r) - torch.log(r * np.pi * 2)
 
 
-class ToyRunner():
+class ToyRunner:
     def __init__(self, args, config):
         self.args = args
         self.config = config
@@ -55,7 +56,15 @@ class ToyRunner():
         return init
 
     @staticmethod
-    def visualize(teacher, model, left_bound=-1., right_bound=1., savefig=None, step=None, device=None):
+    def visualize(
+        teacher,
+        model,
+        left_bound=-1.0,
+        right_bound=1.0,
+        savefig=None,
+        step=None,
+        device=None,
+    ):
         mesh = []
         grid_size = 100
         x = np.linspace(left_bound, right_bound, grid_size)
@@ -73,13 +82,13 @@ class ToyRunner():
         logp_true = logp_true.view(grid_size, grid_size).exp()
 
         plt.grid(False)
-        plt.axis('off')
-        plt.imshow(np.flipud(logp_true.cpu().numpy()), cmap='inferno')
+        plt.axis("off")
+        plt.imshow(np.flipud(logp_true.cpu().numpy()), cmap="inferno")
 
-        plt.title('Data density', fontsize=16)
+        plt.title("Data density", fontsize=16)
 
         if savefig is not None:
-            plt.savefig(savefig + "/{}_data.png".format(step), bbox_inches='tight')
+            plt.savefig(savefig + "/{}_data.png".format(step), bbox_inches="tight")
             plt.close()
         else:
             plt.show()
@@ -102,13 +111,13 @@ class ToyRunner():
         scores = scores.detach().numpy()
 
         plt.grid(False)
-        plt.axis('off')
+        plt.axis("off")
         plt.quiver(mesh[:, 0], mesh[:, 1], scores[:, 0], scores[:, 1], width=0.005)
-        plt.title('Estimated scores', fontsize=16)
-        plt.axis('square')
+        plt.title("Estimated scores", fontsize=16)
+        plt.axis("square")
 
         if savefig is not None:
-            plt.savefig(savefig + "/{}_scores.png".format(step), bbox_inches='tight')
+            plt.savefig(savefig + "/{}_scores.png".format(step), bbox_inches="tight")
             plt.close()
         else:
             plt.show()
@@ -116,8 +125,8 @@ class ToyRunner():
         samples = teacher.sample((1280,))
         samples = samples.detach().cpu().numpy()
         plt.scatter(samples[:, 0], samples[:, 1], s=0.1)
-        plt.axis('square')
-        plt.title('data samples')
+        plt.axis("square")
+        plt.title("data samples")
         plt.xlim([left_bound, right_bound])
         plt.ylim([left_bound, right_bound])
         if savefig is not None:
@@ -129,8 +138,8 @@ class ToyRunner():
         samples = torch.rand(1280, 2) * (right_bound - left_bound) + left_bound
         samples = ToyRunner.langevin_dynamics(model, samples).detach().numpy()
         plt.scatter(samples[:, 0], samples[:, 1], s=0.1)
-        plt.axis('square')
-        plt.title('Langevin dynamics model')
+        plt.axis("square")
+        plt.title("Langevin dynamics model")
         plt.xlim([left_bound, right_bound])
         plt.ylim([left_bound, right_bound])
         plt.show()
@@ -144,14 +153,16 @@ class ToyRunner():
         scores = data_score(torch.from_numpy(mesh))
         scores = scores.detach().numpy()
 
-        plt.axis('off')
+        plt.axis("off")
         plt.grid(False)
         plt.quiver(mesh[:, 0], mesh[:, 1], scores[:, 0], scores[:, 1], width=0.005)
-        plt.title('Data scores', fontsize=16)
-        plt.axis('square')
+        plt.title("Data scores", fontsize=16)
+        plt.axis("square")
 
         if savefig is not None:
-            plt.savefig(savefig + "/{}_data_scores.png".format(step), bbox_inches='tight')
+            plt.savefig(
+                savefig + "/{}_data_scores.png".format(step), bbox_inches="tight"
+            )
             plt.close()
         else:
             plt.show()
@@ -159,8 +170,8 @@ class ToyRunner():
         samples = torch.rand(1280, 2) * (right_bound - left_bound) + left_bound
         samples = ToyRunner.langevin_dynamics(data_score, samples).detach().numpy()
         plt.scatter(samples[:, 0], samples[:, 1], s=0.1)
-        plt.axis('square')
-        plt.title('Langevin dynamics data')
+        plt.axis("square")
+        plt.title("Langevin dynamics data")
         plt.xlim([left_bound, right_bound])
         plt.ylim([left_bound, right_bound])
         plt.show()
@@ -168,6 +179,7 @@ class ToyRunner():
     @staticmethod
     def visualize_noise(noise_net):
         import matplotlib.pyplot as plt
+
         z = torch.randn(100, 2)
         # z = torch.randn(100, 1)
         with torch.no_grad():
@@ -179,8 +191,9 @@ class ToyRunner():
     @staticmethod
     def visualize_iaf(noise_net):
         import matplotlib.pyplot as plt
+
         with torch.no_grad():
-            noise, _ = noise_net.rsample(100, device='cpu')
+            noise, _ = noise_net.rsample(100, device="cpu")
         noise = noise.numpy()
         plt.scatter(noise[:, 0], noise[:, 1])
         plt.show()
@@ -215,14 +228,14 @@ class ToyRunner():
             loss.backward()
             optimizer.step()
 
-            logging.info('step: {}, loss: {}'.format(step, loss.item()))
+            logging.info("step: {}, loss: {}".format(step, loss.item()))
 
-        self.visualize(teacher, score, -8, 8, savefig='tmp')
+        self.visualize(teacher, score, -8, 8, savefig="tmp")
 
     def annealed_sampling_exp(self, left_bound=-8, right_bound=8):
         sns.set(font_scale=1.3)
-        sns.set_style('white')
-        savefig = r'/Users/yangsong/Desktop'
+        sns.set_style("white")
+        savefig = r"/Users/yangsong/Desktop"
 
         teacher = GMMDistAnneal(dim=2)
         mesh = []
@@ -240,13 +253,13 @@ class ToyRunner():
         logp_true = logp_true.view(grid_size, grid_size).exp()
 
         plt.grid(False)
-        plt.axis('off')
-        plt.imshow(np.flipud(logp_true.cpu().numpy()), cmap='inferno')
+        plt.axis("off")
+        plt.imshow(np.flipud(logp_true.cpu().numpy()), cmap="inferno")
 
-        plt.title('Data density')
+        plt.title("Data density")
 
         if savefig is not None:
-            plt.savefig(savefig + "/density.png", bbox_inches='tight')
+            plt.savefig(savefig + "/density.png", bbox_inches="tight")
             plt.close()
         else:
             plt.show()
@@ -254,12 +267,12 @@ class ToyRunner():
         samples = teacher.sample((1280,))
         samples = samples.detach().cpu().numpy()
         plt.scatter(samples[:, 0], samples[:, 1], s=0.2)
-        plt.axis('square')
-        plt.title('i.i.d samples')
+        plt.axis("square")
+        plt.title("i.i.d samples")
         plt.xlim([left_bound, right_bound])
         plt.ylim([left_bound, right_bound])
         if savefig is not None:
-            plt.savefig(savefig + "/iid_samples.png", bbox_inches='tight')
+            plt.savefig(savefig + "/iid_samples.png", bbox_inches="tight")
             plt.close()
         else:
             plt.show()
@@ -267,27 +280,31 @@ class ToyRunner():
         samples = torch.rand(1280, 2) * (right_bound - left_bound) + left_bound
         samples = ToyRunner.langevin_dynamics(teacher.score, samples).detach().numpy()
         plt.scatter(samples[:, 0], samples[:, 1], s=0.2)
-        plt.axis('square')
-        plt.title('Langevin dynamics samples')
+        plt.axis("square")
+        plt.title("Langevin dynamics samples")
         plt.xlim([left_bound, right_bound])
         plt.ylim([left_bound, right_bound])
         if savefig is not None:
-            plt.savefig(savefig + "/langevin_samples.png", bbox_inches='tight')
+            plt.savefig(savefig + "/langevin_samples.png", bbox_inches="tight")
             plt.close()
         else:
             plt.show()
 
         samples = torch.rand(1280, 2) * (right_bound - left_bound) + left_bound
-        sigmas = np.exp(np.linspace(np.log(20), 0., 10))
-        samples = ToyRunner.anneal_langevin_dynamics(teacher.score, samples, sigmas).detach().numpy()
+        sigmas = np.exp(np.linspace(np.log(20), 0.0, 10))
+        samples = (
+            ToyRunner.anneal_langevin_dynamics(teacher.score, samples, sigmas)
+            .detach()
+            .numpy()
+        )
         plt.scatter(samples[:, 0], samples[:, 1], s=0.2)
-        plt.axis('square')
-        plt.title('Annealed Langevin dynamics samples')
+        plt.axis("square")
+        plt.title("Annealed Langevin dynamics samples")
         plt.xlim([left_bound, right_bound])
         plt.ylim([left_bound, right_bound])
 
         if savefig is not None:
-            plt.savefig(savefig + "/annealed_langevin_samples.png", bbox_inches='tight')
+            plt.savefig(savefig + "/annealed_langevin_samples.png", bbox_inches="tight")
             plt.close()
         else:
             plt.show()
